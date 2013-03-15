@@ -109,6 +109,10 @@ class StaticRelation(models.Model):
     gak = models.ForeignKey(SimplestModel)
 
 
+class ExcludeRelation(models.Model):
+    gak = models.ForeignKey(SimplestModel)
+
+
 class FileModel(models.Model):
     file = models.FileField(upload_to='file_model')
     text = models.CharField(max_length=64)

@@ -12,7 +12,7 @@ import sys
 import os
 import datetime
 from shutil import rmtree
-from tempfile import mkdtemp  
+from tempfile import mkdtemp
 
 import pyamf
 from pyamf.tests import util
@@ -91,8 +91,9 @@ def setUpModule():
         from pyamf.adapters import _django_db_models_base as adapter
 
         setup_test_environment()
- 
-        settings.DATABASE_NAME = create_test_db(verbosity=0, autoclobber=True)
+
+        settings.DATABASES['default']['NAME'] = \
+            create_test_db(verbosity=0, autoclobber=True)
         storage = FileSystemStorage(mkdtemp())
 
 
@@ -104,7 +105,7 @@ def tearDownModule():
     util.replace_dict(context['sys.modules'], sys.modules)
     util.replace_dict(context['os.environ'], os.environ)
 
-    destroy_test_db(settings.DATABASE_NAME, verbosity=0)
+    destroy_test_db(settings.DATABASES['default']['NAME'], verbosity=0)
 
     rmtree(storage.location, ignore_errors=True)
 
@@ -444,6 +445,24 @@ class ForeignKeyTestCase(BaseTestCase):
 
         # just run this to ensure that it doesn't blow up
         alias.getDecodableAttributes(x, {'id': None, 'gak': 'foo'})
+
+    def test_exclude_relation(self):
+        pyamf.register_class(models.ExcludeRelation)
+        alias = adapter.DjangoClassAlias(models.ExcludeRelation,
+                                         exclude_attrs=('gak',))
+
+        alias.compile()
+
+        self.assertFalse('gak' in alias.relations)
+        self.assertFalse('gak' in alias.decodable_properties)
+        self.assertFalse('gak' in alias.static_attrs)
+
+        x = models.ExcludeRelation()
+
+        # just run this to ensure that it doesn't blow up
+        self.assertEqual(
+            alias.getDecodableAttributes(x, {'id': None, 'gak': 1}),
+            {})
 
 
 class I18NTestCase(BaseTestCase):

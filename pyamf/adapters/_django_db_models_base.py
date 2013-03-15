@@ -70,6 +70,8 @@ class DjangoClassAlias(pyamf.ClassAlias):
 
         for name in self.meta.get_all_field_names():
             x = self.meta.get_field_by_name(name)[0]
+            if x.name in self.exclude_attrs:
+                continue
 
             if isinstance(x, files.FileField):
                 self.readonly_attrs.update([name])
