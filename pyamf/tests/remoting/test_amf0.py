@@ -39,9 +39,9 @@ class ExceptionTestCase(BaseTestCase):
     Tests exception handling
     """
 
-    def generate_exception(self):
+    def generate_exception(self, msg='foobar'):
         try:
-            raise NameError('foobar')
+            raise NameError(msg)
         except NameError:
             import sys
 
@@ -74,3 +74,17 @@ class ExceptionTestCase(BaseTestCase):
         self.assertEqual(error.code, 'NameError')
         self.assertEqual(error.description, 'foobar')
         self.assertEqual(error.details, None)
+
+    def test_utf_8_exception(self):
+        msg = 'oh no ☹!'
+        response = self.processor.buildErrorResponse(
+            None, error=self.generate_exception(msg))
+        error = response.body
+        self.assertEqual(error.description, msg.decode('utf-8'))
+
+    def test_unicode_exception(self):
+        msg = u'oh no ☹!'
+        response = self.processor.buildErrorResponse(
+            None, error=self.generate_exception(msg))
+        error = response.body
+        self.assertEqual(error.description, msg)

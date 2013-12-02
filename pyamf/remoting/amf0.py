@@ -132,4 +132,10 @@ def build_fault(cls, e, tb, include_traceback=False):
     if include_traceback:
         details = traceback.format_exception(cls, e, tb)
 
-    return remoting.ErrorFault(code=code, description=unicode(e), details=details)
+    try:
+        description = unicode(e)
+    except UnicodeDecodeError, e:
+        description = str(e).decode('utf-8')
+
+    return remoting.ErrorFault(
+        code=code, description=description, details=details)
