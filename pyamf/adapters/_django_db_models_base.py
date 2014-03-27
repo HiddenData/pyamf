@@ -89,6 +89,10 @@ class DjangoClassAlias(pyamf.ClassAlias):
         parent_fields = []
 
         for field in self.meta.parents.values():
+            if field is None:
+                # Proxy inheritance does not define any field
+                continue
+
             parent_fields.append(field.attname)
             del self.relations[field.name]
 
