@@ -185,8 +185,10 @@ class ClassAlias(object):
             self.inherited_sealed = alias.sealed
 
         if alias.synonym_attrs:
+            # Note that self.synonym_attrs might be None, even if
+            # alias.synonym_attrs is defined
             self.synonym_attrs, x = alias.synonym_attrs.copy(), self.synonym_attrs
-            self.synonym_attrs.update(x)
+            self.synonym_attrs.update(x or {})
 
     def _finalise_compile(self):
         if self.dynamic is None:
