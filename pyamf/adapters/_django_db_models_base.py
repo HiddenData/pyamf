@@ -70,6 +70,9 @@ class DjangoClassAlias(pyamf.ClassAlias):
 
         for name in self.meta.get_all_field_names():
             x = self.meta.get_field_by_name(name)[0]
+            if self.dynamic is False and x.name not in self.static_attrs:
+                continue
+
             if x.name in self.exclude_attrs:
                 continue
 
@@ -94,7 +97,10 @@ class DjangoClassAlias(pyamf.ClassAlias):
                 continue
 
             parent_fields.append(field.attname)
-            del self.relations[field.name]
+            try:
+                del self.relations[field.name]
+            except KeyError:
+                pass
 
         self.exclude_attrs.update(parent_fields)
 

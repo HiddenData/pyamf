@@ -375,11 +375,10 @@ class ClassAlias(object):
             for attr in self.static_attrs:
                 attrs[attr] = getattr(obj, attr, pyamf.Undefined)
 
-        if not self.dynamic:
-            if self.non_static_encodable_properties:
-                for attr in self.non_static_encodable_properties:
-                    attrs[attr] = getattr(obj, attr)
-
+        if self.dynamic is False:
+            if self.synonym_attrs:
+                for k, v in self.synonym_attrs.iteritems():
+                    attrs[v] = attrs.get(k)
             return attrs
 
         dynamic_props = util.get_properties(obj)
