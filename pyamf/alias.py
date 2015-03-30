@@ -378,7 +378,7 @@ class ClassAlias(object):
         if self.dynamic is False:
             if self.synonym_attrs:
                 for k, v in self.synonym_attrs.iteritems():
-                    attrs[v] = attrs.get(k)
+                    attrs[v] = getattr(obj, k, pyamf.Undefined)
             return attrs
 
         dynamic_props = util.get_properties(obj)
