@@ -96,7 +96,7 @@ class DjangoGateway(gateway.BaseGateway):
 
         # Decode the request
         try:
-            request = remoting.decode(http_request.raw_post_data,
+            request = remoting.decode(http_request.body,
                 strict=self.strict, logger=self.logger,
                 timezone_offset=timezone_offset)
         except (pyamf.DecodeError, IOError):
