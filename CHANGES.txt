@@ -6,17 +6,25 @@ versions of PyAMF.
 
 .. contents::
 
-0.7 (Unreleased)
+0.7.1 (2015-02-16)
+------------------
+- Add support for Cython <= 0.22
+- Fix a bug in the AppEngine adapters where ``writeNull`` doesn't exist in the C extensions
+
+0.7 (2015-02-10)
 ----------------
+- Dropped support for Python 2.5. A Python 3 port is underway.
+- Fix a rare string collision bug with AMF3 #36
+- Updated to use the latest version of Cython (0.21.2) #34
+- Added Travis/coveralls support.
+- Add post processing callbacks to finalise the decoded payloads. #45
+- Added support for `google.appengine.ext.ndb`. #47
 - ``pyamf.Undefined`` now evaluates to ``False`` in a boolean expression
   (:ticket:`827`)
 - Fixed an issue in the client where '; charset=utf8' would be appended to the
   ``Content-Type`` response header (:ticket:`822`)
 - Add support for :py:class:`collections.OrderedDict` and
   :py:class:`collections.Counter` (:ticket:`816`, :ticket:`815`)
-
-0.6.2 (Unreleased)
-------------------
 - ``pyamf.codec._Codec.__init__`` now supports duck-typing. (:ticket:`835`)
 - Enabled subclassed list/tuple to be overridden by ``pyamf.add_type`` before
   defaulting to writing a sequence. (:ticket:`834`)

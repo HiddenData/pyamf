@@ -79,7 +79,10 @@ cdef class IndexedCollection(object):
         if current_size != self.size:
             self.size = current_size
 
-            cpy = <PyObject **>PyMem_Realloc(self.data, sizeof(PyObject *) * self.size)
+            cpy = <PyObject **>PyMem_Realloc(
+                self.data,
+                sizeof(PyObject *) * self.size
+            )
 
             if cpy == NULL:
                 self._clear()
@@ -117,7 +120,7 @@ cdef class IndexedCollection(object):
 
         return <object>self.data[ref]
 
-    cdef inline object _ref(self, object obj):
+    cdef object _ref(self, object obj):
         if self.use_hash:
             return hash(obj)
 
@@ -159,7 +162,9 @@ cdef class IndexedCollection(object):
     def __richcmp__(self, object other, int op):
         cdef int equal
         cdef Py_ssize_t i
-        cdef IndexedCollection s = self # this is necessary because cython does not see the c-space vars of the class for this func
+        # this is necessary because cython does not see the c-space vars of the
+        # class for this func
+        cdef IndexedCollection s = self
 
         if PyDict_Check(other) == 1:
             equal = s.refs == other
@@ -193,6 +198,25 @@ cdef class IndexedCollection(object):
         return n
 
 
+cdef class ByteStringReferenceCollection(IndexedCollection):
+    """
+    There have been rare hash collisions within a single AMF payload causing
+    corrupt payloads.
+
+    Which strings cause collisions is dependent on the python runtime, each
+    platform might have a slightly different implementation which means that
+    testing is extremely difficult.
+    """
+
+    cdef object _ref(self, object obj):
+        return obj
+
+    def __copy__(self):
+        cdef ByteStringReferenceCollection n = ByteStringReferenceCollection()
+
+        return n
+
+
 cdef class Context(object):
     """
     I hold the AMF context for en/decoding streams.
@@ -221,13 +245,13 @@ cdef class Context(object):
 
         return 0
 
-    cpdef inline object getObject(self, Py_ssize_t ref):
+    cpdef object getObject(self, Py_ssize_t ref):
         return self.objects.getByReference(ref)
 
-    cpdef inline Py_ssize_t getObjectReference(self, object obj) except -2:
+    cpdef Py_ssize_t getObjectReference(self, object obj) except -2:
         return self.objects.getReferenceTo(obj)
 
-    cpdef inline Py_ssize_t addObject(self, object obj) except -1:
+    cpdef Py_ssize_t addObject(self, object obj) except -1:
         return self.objects.append(obj)
 
     cpdef object getClassAlias(self, object klass):
@@ -253,7 +277,7 @@ cdef class Context(object):
             meta = util.get_class_meta(klass)
             alias = alias(klass, defer=True, **meta)
 
-            self.class_aliases[klass] = alias
+        self.class_aliases[klass] = alias
 
         return alias
 
@@ -332,6 +356,9 @@ cdef class Decoder(Codec):
     Base AMF decoder.
     """
 
+    def __cinit__(self):
+        self.depth = 0
+
     cdef object readDate(self):
         raise NotImplementedError
 
@@ -356,7 +383,7 @@ cdef class Decoder(Codec):
     cdef object readXML(self):
         raise NotImplementedError
 
-    cpdef object readElement(self):
+    cdef object _readElement(self):
         """
         Reads an element from the data stream.
         """
@@ -374,6 +401,21 @@ cdef class Decoder(Codec):
             self.stream.seek(pos)
 
             raise
+
+    cpdef object readElement(self):
+        cdef object element
+
+        self.depth += 1
+
+        try:
+            element = self._readElement()
+        finally:
+            self.depth -= 1
+
+        if self.depth == 0:
+            element = self.finalise(element)
+
+        return element
 
     cdef object readConcreteElement(self, char t):
         """
@@ -399,6 +441,18 @@ cdef class Decoder(Codec):
 
     def __iter__(self):
         return self
+
+    cdef object finalise(self, object payload):
+        """
+        Finalise the payload.
+
+        This provides a useful hook to adapters to modify the payload that was
+        decoded.
+        """
+        for c in pyamf.POST_DECODE_PROCESSORS:
+            payload = c(payload, self.context.extra)
+
+        return payload
 
 
 cdef class Encoder(Codec):
@@ -494,7 +548,7 @@ cdef class Encoder(Codec):
     cdef int writeMixedArray(self, object o) except -1:
         raise NotImplementedError
 
-    cdef inline int handleBasicTypes(self, object element, object py_type) except -1:
+    cdef int handleBasicTypes(self, object element, object py_type) except -1:
         """
         @return: 0 = handled, -1 = error, 1 = not handled
         """
@@ -539,13 +593,17 @@ cdef class Encoder(Codec):
 
     cdef int checkBadTypes(self, object element, object py_type) except -1:
         if PyModule_CheckExact(element):
-            raise pyamf.EncodeError("Cannot encode modules")
+            raise pyamf.EncodeError("Cannot encode modules %r" % (element,))
         elif PyMethod_Check(element):
-            raise pyamf.EncodeError("Cannot encode methods")
+            raise pyamf.EncodeError("Cannot encode methods %r" % (element,))
         elif PyFunction_Check(element) or py_type is BuiltinFunctionType:
-            raise pyamf.EncodeError("Cannot encode functions")
+            raise pyamf.EncodeError("Cannot encode functions %r" % (
+                element,
+            ))
         elif PyClass_Check(element) or PyType_CheckExact(element):
-            raise pyamf.EncodeError("Cannot encode class objects")
+            raise pyamf.EncodeError("Cannot encode class objects %r" % (
+                element,
+            ))
         elif PyTime_CheckExact(element):
             raise pyamf.EncodeError('A datetime.time instance was found but '
                 'AMF has no way to encode time objects. Please use '
@@ -594,7 +652,7 @@ cdef class Encoder(Codec):
         Part of the iterator protocol.
         """
         cdef Py_ssize_t start_pos, end_pos
-        cdef char *buf
+        cdef char *buf = NULL
 
         try:
             element = self.bucket.pop(0)

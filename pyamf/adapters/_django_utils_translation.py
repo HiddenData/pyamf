@@ -8,25 +8,20 @@ C{django.utils.translation} adapter module.
 @since: 0.4.2
 """
 
-import django
 from django.utils.translation import ugettext_lazy
 
 import pyamf
 
 
-if django.VERSION[0:2] > (1, 4):
-    _delegate_bytes = '_delegate_bytes'
-    _delegate_text = '_delegate_text'
-else:
-    _delegate_bytes = '_delegate_str'
-    _delegate_text = '_delegate_unicode'
-
-
 def convert_lazy(l, encoder=None):
-    if getattr(l.__class__, _delegate_text):
-        return unicode(l)
+    try:
+        if l.__class__._delegate_text:
+            return unicode(l)
+    except AttributeError:
+        if l.__class__._delegate_unicode:
+            return unicode(l)
 
-    if getattr(l.__class__, _delegate_bytes):
+    if l.__class__._delegate_str:
         return str(l)
 
     raise ValueError('Don\'t know how to convert lazy value %s' % (repr(l),))

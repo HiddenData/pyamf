@@ -71,9 +71,11 @@ class ClassAliasTestCase(ClassCacheClearingTestCase):
         self.assertFalse(x._compiled)
 
     def test_init_kwargs(self):
-        x = ClassAlias(Spam, alias='foo', static_attrs=('bar',),
-            exclude_attrs=('baz',), readonly_attrs='gak', amf3='spam',
-            external='eggs', dynamic='goo', proxy_attrs=('blarg',))
+        x = ClassAlias(
+            Spam, alias='foo', static_attrs=('bar',), exclude_attrs=('baz',),
+            readonly_attrs='gak', amf3='spam',
+            external='eggs', dynamic='goo', proxy_attrs=('blarg',)
+        )
 
         self.assertFalse(x.anonymous)
         self.assertEqual(x.dynamic, 'goo')
@@ -243,10 +245,10 @@ class GetDecodableAttributesTestCase(unittest.TestCase):
         self.alias.static_attrs = ['foo', 'bar']
         self.alias.compile()
 
-        attrs = {'foo': None} # missing bar key ..
+        attrs = {'foo': None}  # missing bar key ..
 
-        self.assertRaises(AttributeError, self.alias.getDecodableAttributes,
-            self.obj, attrs)
+        with self.assertRaises(AttributeError):
+            self.alias.getDecodableAttributes(self.obj, attrs)
 
     def test_no_static(self):
         self.alias.compile()
@@ -404,7 +406,6 @@ class GetDecodableAttributesTestCase(unittest.TestCase):
         self.alias.static_properties = ['foo_syn', ]
         self.alias.exclude_attrs = ['baz', 'gak']
         self.alias.readonly_attrs = ['spam_rd_1', 'spam_rd_2']
-
 
         self.assertFalse(self.alias.shortcut_encode)
         self.assertFalse(self.alias.shortcut_decode)
@@ -614,7 +615,7 @@ class SimpleCompliationTestCase(unittest.TestCase):
 
         x.compile()
 
-        self.assertEqual(x.static_attrs, ['foo', 'bar'])
+        self.assertEqual(x.static_attrs, ['bar', 'foo'])
 
     def test_custom_properties(self):
         class A(ClassAlias):
@@ -716,7 +717,6 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         self.assertEqual(b.bases, [(A, a)])
         self.assertEqual(c.bases, [(B, b), (A, a)])
 
-
     def test_exclude_classic(self):
         class A:
             pass
@@ -727,9 +727,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', exclude_attrs=['foo'], defer=True))
+        a = self._register(
+            ClassAlias(A, 'a', exclude_attrs=['foo'], defer=True)
+        )
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', exclude_attrs=['bar'], defer=True))
+        c = self._register(
+            ClassAlias(C, 'c', exclude_attrs=['bar'], defer=True)
+        )
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -755,9 +759,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', exclude_attrs=['foo'], defer=True))
+        a = self._register(
+            ClassAlias(A, 'a', exclude_attrs=['foo'], defer=True)
+        )
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', exclude_attrs=['bar'], defer=True))
+        c = self._register(
+            ClassAlias(C, 'c', exclude_attrs=['bar'], defer=True)
+        )
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -783,9 +791,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', readonly_attrs=['foo'], defer=True))
+        a = self._register(
+            ClassAlias(A, 'a', readonly_attrs=['foo'], defer=True)
+        )
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', readonly_attrs=['bar'], defer=True))
+        c = self._register(
+            ClassAlias(C, 'c', readonly_attrs=['bar'], defer=True)
+        )
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -811,9 +823,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', readonly_attrs=['foo'], defer=True))
+        a = self._register(
+            ClassAlias(A, 'a', readonly_attrs=['foo'], defer=True)
+        )
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', readonly_attrs=['bar'], defer=True))
+        c = self._register(
+            ClassAlias(C, 'c', readonly_attrs=['bar'], defer=True)
+        )
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -839,9 +855,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', static_attrs=['foo'], defer=True))
+        a = self._register(
+            ClassAlias(A, 'a', static_attrs=['foo'], defer=True)
+        )
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', static_attrs=['bar'], defer=True))
+        c = self._register(
+            ClassAlias(C, 'c', static_attrs=['bar'], defer=True)
+        )
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -855,7 +875,7 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
 
         self.assertEqual(a.static_attrs, ['foo'])
         self.assertEqual(b.static_attrs, ['foo'])
-        self.assertEqual(c.static_attrs, ['foo', 'bar'])
+        self.assertEqual(c.static_attrs, ['bar', 'foo'])
 
     def test_static_new(self):
         class A(object):
@@ -867,9 +887,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', static_attrs=['foo'], defer=True))
+        a = self._register(
+            ClassAlias(A, 'a', static_attrs=['foo'], defer=True)
+        )
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', static_attrs=['bar'], defer=True))
+        c = self._register(
+            ClassAlias(C, 'c', static_attrs=['bar'], defer=True)
+        )
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -883,7 +907,7 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
 
         self.assertEqual(a.static_attrs, ['foo'])
         self.assertEqual(b.static_attrs, ['foo'])
-        self.assertEqual(c.static_attrs, ['foo', 'bar'])
+        self.assertEqual(c.static_attrs, ['bar', 'foo'])
 
     def test_amf3(self):
         class A:
@@ -941,7 +965,6 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         self.assertFalse(b.dynamic)
         self.assertTrue(c.dynamic)
 
-
     def test_synonym_attrs(self):
         class A(object):
             pass
@@ -952,9 +975,13 @@ class CompilationInheritanceTestCase(ClassCacheClearingTestCase):
         class C(B):
             pass
 
-        a = self._register(ClassAlias(A, 'a', synonym_attrs={'foo': 'bar', 'bar': 'baz'}, defer=True))
+        a = self._register(ClassAlias(
+            A, 'a', synonym_attrs={'foo': 'bar', 'bar': 'baz'}, defer=True
+        ))
         b = self._register(ClassAlias(B, 'b', defer=True))
-        c = self._register(ClassAlias(C, 'c', synonym_attrs={'bar': 'spam'}, defer=True))
+        c = self._register(ClassAlias(
+            C, 'c', synonym_attrs={'bar': 'spam'}, defer=True
+        ))
 
         self.assertFalse(a._compiled)
         self.assertFalse(b._compiled)
@@ -1071,13 +1098,19 @@ class CompilationIntegrationTestCase(unittest.TestCase):
         b = ClassAlias(B)
 
         self.assertTrue(b.dynamic)
-        self.assertEqual(b.encodable_properties, ['a_ro', 'a_rw', 'b_ro', 'b_rw'])
+        self.assertEqual(
+            b.encodable_properties,
+            ['a_ro', 'a_rw', 'b_ro', 'b_rw']
+        )
         self.assertEqual(b.decodable_properties, ['a_rw', 'b_rw'])
 
         c = ClassAlias(C)
 
         self.assertTrue(c.dynamic)
-        self.assertEqual(c.encodable_properties, ['a_ro', 'a_rw', 'b_ro', 'b_rw'])
+        self.assertEqual(
+            c.encodable_properties,
+            ['a_ro', 'a_rw', 'b_ro', 'b_rw']
+        )
         self.assertEqual(c.decodable_properties, ['a_rw', 'b_rw'])
 
 
@@ -1133,12 +1166,17 @@ class UnregisterClassTestCase(ClassCacheClearingTestCase):
     def test_alias(self):
         self.assertFalse('foo' in pyamf.CLASS_CACHE)
 
-        self.assertRaises(pyamf.UnknownClassAlias, pyamf.unregister_class, 'foo')
+        with self.assertRaises(pyamf.UnknownClassAlias):
+            pyamf.unregister_class('foo')
 
     def test_class(self):
         self.assertFalse(Spam in pyamf.CLASS_CACHE)
 
-        self.assertRaises(pyamf.UnknownClassAlias, pyamf.unregister_class, Spam)
+        self.assertRaises(
+            pyamf.UnknownClassAlias,
+            pyamf.unregister_class,
+            Spam
+        )
 
     def test_remove(self):
         alias = ClassAlias(Spam, 'foo', defer=True)

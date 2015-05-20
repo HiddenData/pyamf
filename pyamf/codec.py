@@ -120,6 +120,30 @@ class IndexedCollection(object):
             id(self))
 
 
+class ByteStringReferenceCollection(IndexedCollection):
+    """
+    There have been rare hash collisions within a single AMF payload causing
+    corrupt payloads.
+
+    Which strings cause collisions is dependent on the python runtime, each
+    platform might have a slightly different implementation which means that
+    testing is extremely difficult.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(ByteStringReferenceCollection, self).__init__(use_hash=False)
+
+    def getReferenceTo(self, byte_string):
+        return self.dict.get(byte_string, -1)
+
+    def append(self, byte_string):
+        self.list.append(byte_string)
+        idx = len(self.list) - 1
+        self.dict[byte_string] = idx
+
+        return idx
+
+
 class Context(object):
     """
     The base context for all AMF [de|en]coding.
@@ -215,13 +239,12 @@ class Context(object):
 
         @since: 0.6
         """
-        h = hash(s)
-        u = self._unicodes.get(h, None)
+        u = self._unicodes.get(s, None)
 
         if u is not None:
             return u
 
-        u = self._unicodes[h] = s.decode('utf-8')
+        u = self._unicodes[s] = s.decode('utf-8')
 
         return u
 
@@ -232,13 +255,12 @@ class Context(object):
 
         @since: 0.6
         """
-        h = hash(u)
-        s = self._unicodes.get(h, None)
+        s = self._unicodes.get(u, None)
 
         if s is not None:
             return s
 
-        s = self._unicodes[h] = u.encode('utf-8')
+        s = self._unicodes[u] = u.encode('utf-8')
 
         return s
 
@@ -287,14 +309,19 @@ class Decoder(_Codec):
     """
     Base AMF decoder.
 
-    Supports an generator interface. Feed the decoder data using L{send} and get
-    Python objects out by using L{next}.
+    Supports an generator interface. Feed the decoder data using L{send} and
+    get Python objects out by using L{next}.
 
     @ivar strict: Defines how strict the decoding should be. For the time
         being this relates to typed objects in the stream that do not have a
         registered alias. Introduced in 0.4.
     @type strict: C{bool}
     """
+
+    def __init__(self, *args, **kwargs):
+        _Codec.__init__(self, *args, **kwargs)
+
+        self.__depth = 0
 
     def send(self, data):
         """
@@ -312,7 +339,22 @@ class Decoder(_Codec):
             # all data was successfully decoded from the stream
             raise StopIteration
 
-    def readElement(self):
+    def finalise(self, payload):
+        """
+        Finalise the payload.
+
+        This provides a useful hook to adapters to modify the payload that was
+        decoded.
+
+        Note that this is an advanced feature and is NOT directly called by the
+        decoder.
+        """
+        for c in pyamf.POST_DECODE_PROCESSORS:
+            payload = c(payload, self.context.extra)
+
+        return payload
+
+    def _readElement(self):
         """
         Reads an AMF3 element from the data stream.
 
@@ -343,6 +385,25 @@ class Decoder(_Codec):
             self.stream.seek(pos)
 
             raise
+
+    def readElement(self):
+        """
+        Reads an AMF3 element from the data stream.
+
+        @raise DecodeError: The ActionScript type is unsupported.
+        @raise EOStream: No more data left to decode.
+        """
+        self.__depth += 1
+
+        try:
+            element = self._readElement()
+        finally:
+            self.__depth -= 1
+
+        if self.__depth == 0:
+            element = self.finalise(element)
+
+        return element
 
     def __iter__(self):
         return self
@@ -453,7 +514,7 @@ class Encoder(_Codec):
             return self.writeNumber
         elif t in (list, tuple):
             return self.writeList
-        elif t is types.GeneratorType:
+        elif t is types.GeneratorType:  # flake8: noqa
             return self.writeGenerator
         elif t is pyamf.UndefinedType:
             return self.writeUndefined

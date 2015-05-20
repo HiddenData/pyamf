@@ -80,8 +80,8 @@ class Place(models.Model):
 
 
 class Restaurant(Place):
-    serves_hot_dogs = models.BooleanField()
-    serves_pizza = models.BooleanField()
+    serves_hot_dogs = models.BooleanField(default=False)
+    serves_pizza = models.BooleanField(default=False)
 
 
 # abstract inheritance
@@ -91,6 +91,7 @@ class CommonInfo(models.Model):
 
     class Meta:
         abstract = True
+
 
 class Student(CommonInfo):
     home_group = models.CharField(max_length=5)
@@ -125,7 +126,7 @@ try:
         file = models.ImageField(upload_to='profile')
         text = models.CharField(max_length=64)
 except ImportError:
-    pass
+    PIL = None
 
 
 class DBColumnModel(models.Model):

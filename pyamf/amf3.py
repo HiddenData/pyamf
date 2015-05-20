@@ -12,11 +12,11 @@ supports data types that are available only in ActionScript 3.0, such as
 L{ByteArray} and L{ArrayCollection}.
 
 @see: U{Official AMF3 Specification in English
-    <http://opensource.adobe.com/wiki/download/attachments/1114283/amf3_spec_05_05_08.pdf>}
+<http://opensource.adobe.com/wiki/download/attachments/1114283/amf3_spec_05_05_08.pdf>}
 @see: U{Official AMF3 Specification in Japanese
-    <http://opensource.adobe.com/wiki/download/attachments/1114283/JP_amf3_spec_121207.pdf>}
+<http://opensource.adobe.com/wiki/download/attachments/1114283/JP_amf3_spec_121207.pdf>}
 @see: U{AMF3 documentation on OSFlash
-    <http://osflash.org/documentation/amf3>}
+<http://osflash.org/documentation/amf3>}
 
 @since: 0.1
 """
@@ -59,7 +59,7 @@ TYPE_BOOL_TRUE = '\x03'
 #: In AMF 3 integers are serialized using a variable length signed 29-bit
 #: integer.
 #: @see: U{Parsing Integers on OSFlash (external)
-#: <http://osflash.org/documentation/amf3/parsing_integers>}
+#: <http://osflash.org/amf3/parsing_integers>}
 TYPE_INTEGER = '\x04'
 #: This type is used to encode an ActionScript Number or an ActionScript
 #: C{int} of value greater than or equal to 2^28 or an ActionScript uint of
@@ -84,7 +84,8 @@ TYPE_STRING = '\x06'
 #: C{XMLDocument} instance by using an index to the implicit object reference
 #: table.
 #: @see: U{OSFlash documentation (external)
-#: <http://osflash.org/documentation/amf3#x07_-_xml_legacy_flashxmlxmldocument_class>}
+#: <http://osflash.org/documentation/amf3
+#:     #x07_-_xml_legacy_flash.xml.xmldocument_class>}
 TYPE_XML = '\x07'
 #: In AMF 3 an ActionScript Date is serialized as the number of
 #: milliseconds elapsed since the epoch of midnight, 1st Jan 1970 in the
@@ -153,6 +154,8 @@ class ObjectEncoding:
 class DataOutput(object):
     """
     I am a C{StringIO} type object containing byte data from the AMF stream.
+    ActionScript 3.0 introduced the C{flash.utils.ByteArray} class to support
+    the manipulation of raw data in the form of an Array of bytes.
     I provide a set of methods for writing binary data with ActionScript 3.0.
 
     This class is the I/O counterpart to the L{DataInput} class, which reads
@@ -411,7 +414,7 @@ class DataInput(object):
         @rtype: C{str}
         @return: UTF-8 encoded string.
         """
-        #FIXME nick: how to work out the code point byte size (on the fly)?
+        # FIXME nick: how to work out the code point byte size (on the fly)?
         bytes = self.stream.read(length)
 
         return unicode(bytes, charset)
@@ -542,7 +545,7 @@ class ByteArray(util.BufferedByteStream, DataInput, DataOutput):
             return buf
 
         buf = zlib.compress(buf)
-        #FIXME nick: hacked
+        # FIXME nick: hacked
         return buf[0] + '\xda' + buf[2:]
 
     def compress(self):
@@ -581,8 +584,17 @@ class ClassDefinition(object):
                 self.encoding = ObjectEncoding.STATIC
 
     def __repr__(self):
-        return '<%s.ClassDefinition reference=%r encoding=%r alias=%r at 0x%x>' % (
-            self.__class__.__module__, self.reference, self.encoding, self.alias, id(self))
+        my_repr = (
+            '<%s.ClassDefinition reference=%r encoding=%r alias=%r at 0x%x>'
+        )
+
+        return my_repr % (
+            self.__class__.__module__,
+            self.reference,
+            self.encoding,
+            self.alias,
+            id(self)
+        )
 
 
 class Context(codec.Context):
@@ -590,13 +602,13 @@ class Context(codec.Context):
     I hold the AMF3 context for en/decoding streams.
 
     @ivar strings: A list of string references.
-    @type strings: C{list}
+    @type strings: L{codec.ByteStringReferenceCollection}
     @ivar classes: A list of L{ClassDefinition}.
     @type classes: C{list}
     """
 
     def __init__(self):
-        self.strings = codec.IndexedCollection(use_hash=True)
+        self.strings = codec.ByteStringReferenceCollection()
         self.classes = {}
         self.class_ref = {}
 
@@ -837,8 +849,8 @@ class Decoder(codec.Decoder):
 
         @type signed: C{bool}
         @see: U{Parsing integers on OSFlash
-        <http://osflash.org/documentation/amf3/parsing_integers>} for the AMF3
-        integer data format.
+        <http://osflash.org/amf3/parsing_integers>} for the AMF3 integer data
+        format.
         """
         return decode_int(self.stream, signed)
 
@@ -1010,7 +1022,9 @@ class Decoder(codec.Decoder):
             obj = self.context.getObject(ref >> 1)
 
             if obj is None:
-                raise pyamf.ReferenceError('Unknown reference %d' % (ref >> 1,))
+                raise pyamf.ReferenceError(
+                    'Unknown reference %d' % (ref >> 1,)
+                )
 
             if self.use_proxies is True:
                 obj = self.readProxy(obj)
@@ -1027,7 +1041,9 @@ class Decoder(codec.Decoder):
 
         self.context.addObject(obj)
 
-        if class_def.encoding in (ObjectEncoding.EXTERNAL, ObjectEncoding.PROXY):
+        if class_def.encoding in (
+                ObjectEncoding.EXTERNAL,
+                ObjectEncoding.PROXY):
             obj.__readamf__(DataInput(self))
 
             if self.use_proxies is True:
@@ -1092,14 +1108,17 @@ class Decoder(codec.Decoder):
             return self.context.getObject(ref >> 1)
 
         buffer = self.stream.read(ref >> 1)
+        compressed = False
 
         if buffer[0:2] == ByteArray._zlib_header:
             try:
                 buffer = zlib.decompress(buffer)
+                compressed = True
             except zlib.error:
                 pass
 
         obj = ByteArray(buffer)
+        obj.compressed = compressed
 
         self.context.addObject(obj)
 
@@ -1255,9 +1274,11 @@ class Encoder(codec.Encoder):
         @raise EncodeError: A datetime.time instance was found
         """
         if isinstance(n, datetime.time):
-            raise pyamf.EncodeError('A datetime.time instance was found but '
-                'AMF3 has no way to encode time objects. Please use '
-                'datetime.datetime instead (got:%r)' % (n,))
+            raise pyamf.EncodeError(
+                'A datetime.time instance was found but AMF3 has no way to '
+                'encode time objects. Please use datetime.datetime instead '
+                '(got:%r)' % (n,)
+            )
 
         self.stream.write(TYPE_DATE)
 
@@ -1412,7 +1433,7 @@ class Encoder(codec.Encoder):
         kls = obj.__class__
         definition = self.context.getClass(kls)
         alias = None
-        class_ref = False # if the class definition is a reference
+        class_ref = False  # if the class definition is a reference
 
         if definition:
             class_ref = True
@@ -1431,8 +1452,12 @@ class Encoder(codec.Encoder):
             if definition.encoding != ObjectEncoding.EXTERNAL:
                 ref += definition.attr_len << 4
 
-            final_reference = encode_int(ref | definition.encoding << 2 |
-                REFERENCE_BIT << 1 | REFERENCE_BIT)
+            final_reference = encode_int(
+                ref |
+                definition.encoding << 2 |
+                REFERENCE_BIT << 1 |
+                REFERENCE_BIT
+            )
 
             self.stream.write(final_reference)
 
