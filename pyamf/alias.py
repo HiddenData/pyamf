@@ -189,7 +189,7 @@ class ClassAlias(object):
             self.inherited_sealed = alias.sealed
 
         if alias.synonym_attrs:
-            x = self.synonym_attrs
+            x = self.synonym_attrs or {}
             self.synonym_attrs = alias.synonym_attrs.copy()
             self.synonym_attrs.update(x)
 
