@@ -73,12 +73,16 @@ class ClassAlias(object):
         k = self.klass
 
         if not hasattr(k, '__readamf__'):
-            raise AttributeError("An externalised class was specified, but"
-                " no __readamf__ attribute was found for %r" % (k,))
+            raise AttributeError(
+                "An externalised class was specified, but"
+                " no __readamf__ attribute was found for %r" % (k,)
+            )
 
         if not hasattr(k, '__writeamf__'):
-            raise AttributeError("An externalised class was specified, but"
-                " no __writeamf__ attribute was found for %r" % (k,))
+            raise AttributeError(
+                "An externalised class was specified, but"
+                " no __writeamf__ attribute was found for %r" % (k,)
+            )
 
         if not hasattr(k.__readamf__, '__call__'):
             raise TypeError("%s.__readamf__ must be callable" % (k.__name__,))
@@ -195,7 +199,9 @@ class ClassAlias(object):
             self.dynamic = True
 
             if self.inherited_dynamic is not None:
-                if self.inherited_dynamic is False and not self.sealed and self.inherited_sealed:
+                if not self.inherited_dynamic \
+                        and not self.sealed \
+                        and self.inherited_sealed:
                     self.dynamic = True
                 else:
                     self.dynamic = self.inherited_dynamic
@@ -210,10 +216,15 @@ class ClassAlias(object):
             self.external = False
 
         if self.static_attrs:
+            self.static_attrs = list(self.static_attrs)
+            self.static_attrs.sort()
+
             self.encodable_properties.update(self.static_attrs)
             self.decodable_properties.update(self.static_attrs)
 
         if self.static_attrs:
+            self.static_attrs_set.update(self.static_attrs)
+
             if self.exclude_attrs:
                 self.static_attrs_set.difference_update(self.exclude_attrs)
 
@@ -261,10 +272,14 @@ class ClassAlias(object):
         self.non_static_encodable_properties = None
 
         if self.encodable_properties:
-            self.non_static_encodable_properties = set(self.encodable_properties)
+            self.non_static_encodable_properties = set(
+                self.encodable_properties
+            )
 
             if self.static_attrs:
-                self.non_static_encodable_properties.difference_update(self.static_attrs)
+                self.non_static_encodable_properties.difference_update(
+                    self.static_attrs
+                )
 
         self.shortcut_encode = True
         self.shortcut_decode = True
@@ -295,8 +310,13 @@ class ClassAlias(object):
     def __repr__(self):
         k = self.__class__
 
-        return '<%s.%s alias=%r class=%r @ 0x%x>' % (k.__module__, k.__name__,
-            self.alias, self.klass, id(self))
+        return '<%s.%s alias=%r class=%r @ 0x%x>' % (
+            k.__module__,
+            k.__name__,
+            self.alias,
+            self.klass,
+            id(self)
+        )
 
     def __eq__(self, other):
         if isinstance(other, basestring):
@@ -327,7 +347,9 @@ class ClassAlias(object):
 
         # Check that the constructor of the class doesn't require any additonal
         # arguments.
-        if not (hasattr(klass, '__init__') and hasattr(klass.__init__, '__call__')):
+        if not (
+            hasattr(klass, '__init__') and hasattr(klass.__init__, '__call__')
+        ):
             return
 
         klass_func = klass.__init__.im_func
@@ -349,8 +371,21 @@ class ClassAlias(object):
 
         spec = inspect.getargspec(klass_func)
 
-        raise TypeError("__init__ doesn't support additional arguments: %s"
-            % inspect.formatargspec(*spec))
+        raise TypeError(
+            "__init__ doesn't support additional arguments: %s" % (
+                inspect.formatargspec(*spec)
+            )
+        )
+
+    def getAttribute(self, obj, attr, codec=None):
+        """
+        Get the attribute `attr` from `obj`. If no attribute exists,
+        `pyamf.Undefined` is returned.
+
+        @param codec: The current `pyamf.codec.Codec` getting the attribute
+            (if there is one).
+        """
+        return getattr(obj, attr)
 
     def getEncodableAttributes(self, obj, codec=None):
         """
@@ -373,12 +408,15 @@ class ClassAlias(object):
 
         if self.static_attrs:
             for attr in self.static_attrs:
-                attrs[attr] = getattr(obj, attr, pyamf.Undefined)
+                try:
+                    attrs[attr] = self.getAttribute(obj, attr, codec=codec)
+                except AttributeError:
+                    attrs[attr] = pyamf.Undefined
 
         if not self.dynamic:
             if self.non_static_encodable_properties:
                 for attr in self.non_static_encodable_properties:
-                    attrs[attr] = getattr(obj, attr)
+                    attrs[attr] = self.getAttribute(obj, attr, codec=codec)
 
             return attrs
 
@@ -397,7 +435,7 @@ class ClassAlias(object):
                 dynamic_props.difference_update(self.exclude_attrs)
 
         for attr in dynamic_props:
-            attrs[attr] = getattr(obj, attr)
+            attrs[attr] = self.getAttribute(obj, attr, codec=codec)
 
         if self.proxy_attrs is not None and attrs and codec:
             context = codec.context
@@ -443,8 +481,11 @@ class ClassAlias(object):
             missing_attrs = self.static_attrs_set.difference(props)
 
             if missing_attrs:
-                raise AttributeError('Static attributes %r expected '
-                    'when decoding %r' % (missing_attrs, self.klass))
+                raise AttributeError(
+                    'Static attributes %r expected when decoding %r' % (
+                        missing_attrs, self.klass
+                    )
+                )
 
             props.difference_update(self.static_attrs)
 
@@ -512,7 +553,9 @@ class ClassAlias(object):
         if not self._compiled:
             self.compile()
 
-        if self.shortcut_decode:
+        if not self.shortcut_decode:
+            attrs = self.getDecodableAttributes(obj, attrs, codec=codec)
+        else:
             if self.is_dict:
                 obj.update(attrs)
 
@@ -522,9 +565,6 @@ class ClassAlias(object):
                 obj.__dict__.update(attrs)
 
                 return
-
-        else:
-            attrs = self.getDecodableAttributes(obj, attrs, codec=codec)
 
         util.set_attrs(obj, attrs)
 

@@ -23,8 +23,12 @@ else:
 
 
 def convert_lazy(l, encoder=None):
-    if getattr(l.__class__, _delegate_text):
-        return unicode(l)
+    try:
+        if l.__class__._delegate_text:
+            return unicode(l)
+    except AttributeError:
+        if l.__class__._delegate_unicode:
+            return unicode(l)
 
     if getattr(l.__class__, _delegate_bytes):
         return str(l)

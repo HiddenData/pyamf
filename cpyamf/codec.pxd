@@ -20,13 +20,24 @@ cdef class IndexedCollection(object):
     cdef Py_ssize_t length
 
     cdef int _actually_increase_size(self) except -1
-    cdef int _increase_size(self) except? -1
+    cdef int _increase_size(self) except -1
     cdef void _clear(self)
     cpdef int clear(self) except -1
     cdef object _ref(self, object obj)
     cpdef object getByReference(self, Py_ssize_t ref)
     cpdef Py_ssize_t getReferenceTo(self, object obj) except -2
     cpdef Py_ssize_t append(self, object obj) except -1
+
+
+cdef class ByteStringReferenceCollection(IndexedCollection):
+    """
+    There have been rare hash collisions within a single AMF payload causing
+    corrupt payloads.
+
+    Which strings cause collisions is dependent on the python runtime, each
+    platform might have a slightly different implementation which means that
+    testing is extremely difficult.
+    """
 
 
 cdef class Context(object):
@@ -40,7 +51,7 @@ cdef class Context(object):
     cdef dict _strings
     cdef public dict extra
 
-    cpdef int clear(self) except? -1
+    cpdef int clear(self) except -1
     cpdef object getClassAlias(self, object klass)
 
     cpdef object getObject(self, Py_ssize_t ref)
@@ -63,6 +74,8 @@ cdef class Codec(object):
 
 
 cdef class Decoder(Codec):
+    cdef unsigned int depth
+
     cdef object readDate(self)
     cpdef object readString(self)
     cdef object readObject(self)
@@ -72,10 +85,12 @@ cdef class Decoder(Codec):
     cdef object readList(self)
     cdef object readXML(self)
 
+    cdef object _readElement(self)
     cpdef object readElement(self)
     cdef object readConcreteElement(self, char t)
 
     cpdef int send(self, data) except -1
+    cdef object finalise(self, object payload)
 
 
 cdef class Encoder(Codec):
@@ -107,7 +122,7 @@ cdef class Encoder(Codec):
     cdef int writeMixedArray(self, object o) except -1
     cdef int writeGenerator(self, object) except -1
 
-    cdef inline int handleBasicTypes(self, object element, object py_type) except -1
+    cdef int handleBasicTypes(self, object element, object py_type) except -1
     cdef int checkBadTypes(self, object element, object py_type) except -1
     cpdef int writeElement(self, object element) except -1
 
