@@ -76,7 +76,7 @@ class DjangoClassAlias(pyamf.ClassAlias):
             if isinstance(x, files.FileField):
                 self.readonly_attrs.update([name])
 
-            if isinstance(x, related.RelatedObject):
+            if isinstance(x, related.ForeignObjectRel):
                 continue
 
             if isinstance(x, related.ManyToManyField):
