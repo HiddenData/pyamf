@@ -35,23 +35,23 @@ class MyDistribution(Distribution):
     This seems to be is the only obvious way to add a global option to
     distutils.
 
-    Provide the ability to disable building the extensions for any called
+    Provide the ability to enable building the extensions for any called
     command.
     """
 
     global_options = Distribution.global_options + [
-        ('disable-ext', None, 'Disable building extensions.')
+        ('enable-ext', None, 'Enable building extensions.')
     ]
 
     def finalize_options(self):
         Distribution.finalize_options(self)
 
         try:
-            i = self.script_args.index('--disable-ext')
+            i = self.script_args.index('--enable-ext')
         except ValueError:
-            self.disable_ext = False
-        else:
             self.disable_ext = True
+        else:
+            self.disable_ext = False
             self.script_args.pop(i)
 
 
